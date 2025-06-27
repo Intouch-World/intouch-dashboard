@@ -1,0 +1,1923 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Intouch World Dashboard</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    <style>
+        :root {
+            --color-prospect: #ffc107;
+            --color-negotiation: #17a2b8;
+            --color-closed-won: #28a745;
+            --color-closed-lost: #dc3545;
+            --color-renewed: #28a745;
+            --color-pending: #ffc107;
+            --color-overdue: #dc3545;
+            --color-paid: #6c757d;
+            --color-partially-paid: #fd7e14;
+            --color-quote-sent: #6f42c1;
+            --color-in-process: #20c997;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f8f9fa;
+        }
+        
+        .card {
+            margin-bottom: 20px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            transition: transform 0.2s;
+        }
+        
+        .card:hover {
+            transform: translateY(-2px);
+        }
+        
+        .nav-tabs .nav-link.active {
+            font-weight: bold;
+            border-bottom: 3px solid #0d6efd;
+        }
+        
+        .status-badge {
+            padding: 5px 10px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 500;
+            display: inline-block;
+            min-width: 80px;
+            text-align: center;
+        }
+        
+        .prospect { background-color: var(--color-prospect); }
+        .negotiation { background-color: var(--color-negotiation); color: white; }
+        .closed-won { background-color: var(--color-closed-won); color: white; }
+        .closed-lost { background-color: var(--color-closed-lost); color: white; }
+        .renewed { background-color: var(--color-renewed); color: white; }
+        .pending { background-color: var(--color-pending); }
+        .overdue { background-color: var(--color-overdue); color: white; }
+        .paid { background-color: var(--color-paid); color: white; }
+        .partially-paid { background-color: var(--color-partially-paid); color: white; }
+        .quote-sent { background-color: var(--color-quote-sent); color: white; }
+        .in-process { background-color: var(--color-in-process); color: white; }
+        
+        .total-row {
+            font-weight: bold;
+            background-color: #f8f9fa;
+        }
+        
+        .table-responsive {
+            overflow-x: auto;
+        }
+        
+        .table th {
+            white-space: nowrap;
+            position: sticky;
+            top: 0;
+            background: white;
+            z-index: 10;
+        }
+        
+        .supplier-table th {
+            background-color: #f8f9fa;
+        }
+        
+        .modal-header {
+            background-color: #0d6efd;
+            color: white;
+        }
+        
+        .form-control:focus, .form-select:focus {
+            box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+        }
+        
+        .notes-cell {
+            max-width: 200px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        
+        .other-product-container {
+            display: none;
+            margin-top: 5px;
+        }
+        
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+            display: none;
+        }
+        
+        .spinner-border {
+            width: 3rem;
+            height: 3rem;
+        }
+        
+        @media (max-width: 768px) {
+            .card {
+                margin-bottom: 15px;
+            }
+            
+            .table-responsive {
+                font-size: 0.85rem;
+            }
+            
+            .btn {
+                padding: 0.25rem 0.5rem;
+                font-size: 0.8rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="loading-overlay">
+        <div class="spinner-border text-light" role="status">
+            <span class="visually-hidden">Loading...</span>
+        </div>
+    </div>
+
+    <div class="container-fluid">
+        <header class="bg-primary text-white p-3 mb-4">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h1>Intouch World Dashboard</h1>
+                    <p class="mb-0">Company performance overview</p>
+                </div>
+            </div>
+        </header>
+
+        <ul class="nav nav-tabs" id="dashboardTabs" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active" id="summary-tab" data-bs-toggle="tab" data-bs-target="#summary" type="button">Summary</button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="sales-tab" data-bs-toggle="tab" data-bs-target="#sales" type="button">Sales Funnel</button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="renewals-tab" data-bs-toggle="tab" data-bs-target="#renewals" type="button">Renewals</button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="receivables-tab" data-bs-toggle="tab" data-bs-target="#receivables" type="button">Receivables (INR)</button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="receivables-usd-tab" data-bs-toggle="tab" data-bs-target="#receivables-usd" type="button">Receivables (USD)</button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="suppliers-tab" data-bs-toggle="tab" data-bs-target="#suppliers" type="button">Supplier Payments</button>
+            </li>
+        </ul>
+
+        <div class="tab-content p-3 border border-top-0 rounded-bottom">
+            <!-- Summary Tab -->
+            <div class="tab-pane fade show active" id="summary" role="tabpanel">
+                <div class="row">
+                    <div class="col-md-3">
+                        <div class="card text-white bg-primary">
+                            <div class="card-body">
+                                <h5 class="card-title">Total Pipeline (INR)</h5>
+                                <h2 id="totalPipeline">₹0</h2>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card text-white bg-success">
+                            <div class="card-body">
+                                <h5 class="card-title">Upcoming Renewals (INR)</h5>
+                                <h2 id="upcomingRenewals">₹0</h2>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card text-white bg-warning">
+                            <div class="card-body">
+                                <h5 class="card-title">Outstanding Receivables (INR)</h5>
+                                <h2 id="outstandingReceivables">₹0</h2>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card text-white bg-danger">
+                            <div class="card-body">
+                                <h5 class="card-title">Supplier Payments Due</h5>
+                                <h2 id="supplierPayments">$0</h2>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="row mt-4">
+                    <div class="col-md-6">
+                        <div class="card">
+                            <div class="card-header">
+                                <h5>Sales Pipeline by Status</h5>
+                            </div>
+                            <div class="card-body">
+                                <canvas id="salesChart" height="300"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="card">
+                            <div class="card-header">
+                                <h5>Receivables Aging</h5>
+                            </div>
+                            <div class="card-body">
+                                <canvas id="receivablesChart" height="300"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Sales Funnel Tab -->
+            <div class="tab-pane fade" id="sales" role="tabpanel">
+                <div class="d-flex justify-content-between mb-3">
+                    <h3>Sales Funnel</h3>
+                    <div>
+                        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addSalesModal">Add Opportunity</button>
+                        <button class="btn btn-outline-secondary ms-2" onclick="exportToCSV('sales')">Export</button>
+                    </div>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-striped" id="salesTable">
+                        <thead>
+                            <tr>
+                                <th>Company</th>
+                                <th>Product</th>
+                                <th>License Type</th>
+                                <th>Status</th>
+                                <th>Value (INR)</th>
+                                <th>Notes</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- Data will be loaded here -->
+                        </tbody>
+                        <tfoot>
+                            <tr class="total-row">
+                                <td colspan="4">Total</td>
+                                <td id="salesTotal">₹0</td>
+                                <td colspan="2"></td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Renewals Tab -->
+            <div class="tab-pane fade" id="renewals" role="tabpanel">
+                <div class="d-flex justify-content-between mb-3">
+                    <h3>Renewals</h3>
+                    <div>
+                        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addRenewalModal">Add Renewal</button>
+                        <button class="btn btn-outline-secondary ms-2" onclick="exportToCSV('renewals')">Export</button>
+                    </div>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-striped" id="renewalsTable">
+                        <thead>
+                            <tr>
+                                <th>Company</th>
+                                <th>Product</th>
+                                <th>Renewal Date</th>
+                                <th>Status</th>
+                                <th>Value (INR)</th>
+                                <th>License Type</th>
+                                <th>Notes</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- Data will be loaded here -->
+                        </tbody>
+                        <tfoot>
+                            <tr class="total-row">
+                                <td colspan="4">Total</td>
+                                <td id="renewalsTotal">₹0</td>
+                                <td colspan="3"></td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Receivables (INR) Tab -->
+            <div class="tab-pane fade" id="receivables" role="tabpanel">
+                <div class="d-flex justify-content-between mb-3">
+                    <h3>Customer Payment Receivables (INR)</h3>
+                    <div>
+                        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addReceivableModal">Add Invoice</button>
+                        <button class="btn btn-outline-secondary ms-2" onclick="exportToCSV('receivables')">Export</button>
+                    </div>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-striped" id="receivablesTable">
+                        <thead>
+                            <tr>
+                                <th>Company</th>
+                                <th>Product</th>
+                                <th>PO Number</th>
+                                <th>PO Date</th>
+                                <th>Invoice #</th>
+                                <th>Invoice Date</th>
+                                <th>Value (INR)</th>
+                                <th>Payment Term</th>
+                                <th>Due Date</th>
+                                <th>Status</th>
+                                <th>Notes</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- Data will be loaded here -->
+                        </tbody>
+                        <tfoot>
+                            <tr class="total-row">
+                                <td colspan="6">Total</td>
+                                <td id="receivablesTotal">₹0</td>
+                                <td colspan="5"></td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Receivables (USD) Tab -->
+            <div class="tab-pane fade" id="receivables-usd" role="tabpanel">
+                <div class="d-flex justify-content-between mb-3">
+                    <h3>Customer Payment Receivables (USD)</h3>
+                    <div>
+                        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addReceivableUsdModal">Add Invoice</button>
+                        <button class="btn btn-outline-secondary ms-2" onclick="exportToCSV('receivablesUsd')">Export</button>
+                    </div>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-striped" id="receivablesUsdTable">
+                        <thead>
+                            <tr>
+                                <th>Company</th>
+                                <th>Product</th>
+                                <th>PO Number</th>
+                                <th>PO Date</th>
+                                <th>Invoice #</th>
+                                <th>Invoice Date</th>
+                                <th>Value (USD)</th>
+                                <th>Payment Term</th>
+                                <th>Due Date</th>
+                                <th>Status</th>
+                                <th>Notes</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- Data will be loaded here -->
+                        </tbody>
+                        <tfoot>
+                            <tr class="total-row">
+                                <td colspan="6">Total</td>
+                                <td id="receivablesUsdTotal">$0</td>
+                                <td colspan="5"></td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Supplier Payments Tab -->
+            <div class="tab-pane fade" id="suppliers" role="tabpanel">
+                <div class="d-flex justify-content-between mb-3">
+                    <h3>Supplier Payments</h3>
+                    <div>
+                        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addSupplierPaymentModal">Add Payment</button>
+                        <button class="btn btn-outline-secondary ms-2" onclick="exportToCSV('suppliers')">Export</button>
+                    </div>
+                </div>
+                <ul class="nav nav-tabs" id="supplierTabs" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active" id="portswigger-tab" data-bs-toggle="tab" data-bs-target="#portswigger">Portswigger</button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="nable-tab" data-bs-toggle="tab" data-bs-target="#nable">N-Able</button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="titania-tab" data-bs-toggle="tab" data-bs-target="#titania">Titania</button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="sonar-tab" data-bs-toggle="tab" data-bs-target="#sonar">Sonar</button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="tenable-tab" data-bs-toggle="tab" data-bs-target="#tenable">Tenable</button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="halopsa-tab" data-bs-toggle="tab" data-bs-target="#halopsa">HaloPSA</button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="others-tab" data-bs-toggle="tab" data-bs-target="#others">Others</button>
+                    </li>
+                </ul>
+                <div class="tab-content p-3 border border-top-0 rounded-bottom">
+                    <div class="tab-pane fade show active" id="portswigger" role="tabpanel">
+                        <table class="table table-striped supplier-table">
+                            <thead>
+                                <tr>
+                                    <th>Product</th>
+                                    <th>Invoice Date</th>
+                                    <th>Invoice #</th>
+                                    <th>Value</th>
+                                    <th>Due Date</th>
+                                    <th>Status</th>
+                                    <th>Notes</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <!-- Data will be loaded here -->
+                            </tbody>
+                            <tfoot>
+                                <tr class="total-row">
+                                    <td colspan="3">Total</td>
+                                    <td id="portswiggerTotal">$0</td>
+                                    <td colspan="4"></td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                    <!-- Other supplier tabs (nable, titania, etc.) with same structure -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Sales Opportunity Modal -->
+    <div class="modal fade" id="addSalesModal" tabindex="-1" aria-labelledby="addSalesModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="addSalesModalLabel">Add Sales Opportunity</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="salesForm">
+                        <input type="hidden" id="salesId">
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label for="salesCompany" class="form-label">Company</label>
+                                <input type="text" class="form-control" id="salesCompany" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="salesProduct" class="form-label">Product</label>
+                                <select class="form-select" id="salesProduct" required onchange="toggleOtherProduct(this, 'salesOtherProductContainer')">
+                                    <option value="">Select Product</option>
+                                    <option value="N-Able N-Sight">N-Able N-Sight</option>
+                                    <option value="N-Able Ncentral">N-Able Ncentral</option>
+                                    <option value="Titania">Titania</option>
+                                    <option value="Nessus">Nessus</option>
+                                    <option value="Burpsuite">Burpsuite</option>
+                                    <option value="Nipper">Nipper</option>
+                                    <option value="Halo PSA">Halo PSA</option>
+                                    <option value="Sonarqube">Sonarqube</option>
+                                    <option value="other">Other (Specify)</option>
+                                </select>
+                                <div id="salesOtherProductContainer" class="other-product-container">
+                                    <label for="salesOtherProduct" class="form-label">Other Product</label>
+                                    <input type="text" class="form-control" id="salesOtherProduct">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label for="salesLicenseType" class="form-label">License Type</label>
+                                <select class="form-select" id="salesLicenseType" required>
+                                    <option value="">Select License Type</option>
+                                    <option value="New Annual Subscription">New Annual Subscription</option>
+                                    <option value="Monthly Subscription">Monthly Subscription</option>
+                                    <option value="Renewal">Renewal</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="salesStatus" class="form-label">Status</label>
+                                <select class="form-select" id="salesStatus" required>
+                                    <option value="Prospect">Prospect</option>
+                                    <option value="Quote Sent">Quote Sent</option>
+                                    <option value="In Process">In Process</option>
+                                    <option value="Negotiation">Negotiation</option>
+                                    <option value="Closed Won">Closed Won</option>
+                                    <option value="Closed Lost">Closed Lost</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label for="salesValue" class="form-label">Value (INR)</label>
+                                <input type="number" step="0.01" class="form-control" id="salesValue" required>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="salesNotes" class="form-label">Notes</label>
+                            <textarea class="form-control" id="salesNotes" rows="3"></textarea>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" form="salesForm" class="btn btn-primary">Save</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Renewal Modal -->
+    <div class="modal fade" id="addRenewalModal" tabindex="-1" aria-labelledby="addRenewalModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="addRenewalModalLabel">Add Renewal</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="renewalForm">
+                        <input type="hidden" id="renewalId">
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label for="renewalCompany" class="form-label">Company</label>
+                                <input type="text" class="form-control" id="renewalCompany" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="renewalProduct" class="form-label">Product</label>
+                                <select class="form-select" id="renewalProduct" required onchange="toggleOtherProduct(this, 'renewalOtherProductContainer')">
+                                    <option value="">Select Product</option>
+                                    <option value="N-Able N-Sight">N-Able N-Sight</option>
+                                    <option value="N-Able Ncentral">N-Able Ncentral</option>
+                                    <option value="Titania">Titania</option>
+                                    <option value="Nessus">Nessus</option>
+                                    <option value="Burpsuite">Burpsuite</option>
+                                    <option value="Nipper">Nipper</option>
+                                    <option value="Halo PSA">Halo PSA</option>
+                                    <option value="Sonarqube">Sonarqube</option>
+                                    <option value="other">Other (Specify)</option>
+                                </select>
+                                <div id="renewalOtherProductContainer" class="other-product-container">
+                                    <label for="renewalOtherProduct" class="form-label">Other Product</label>
+                                    <input type="text" class="form-control" id="renewalOtherProduct">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label for="renewalDate" class="form-label">Renewal Date</label>
+                                <input type="date" class="form-control datepicker" id="renewalDate" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="renewalStatus" class="form-label">Status</label>
+                                <select class="form-select" id="renewalStatus" required>
+                                    <option value="Pending">Pending</option>
+                                    <option value="Quote Sent">Quote Sent</option>
+                                    <option value="In Process">In Process</option>
+                                    <option value="Renewed">Renewed</option>
+                                    <option value="Cancelled">Cancelled</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label for="renewalLicenseType" class="form-label">License Type</label>
+                                <select class="form-select" id="renewalLicenseType" required>
+                                    <option value="">Select License Type</option>
+                                    <option value="New Annual Subscription">New Annual Subscription</option>
+                                    <option value="Monthly Subscription">Monthly Subscription</option>
+                                    <option value="Renewal">Renewal</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="renewalValue" class="form-label">Value (INR)</label>
+                                <input type="number" step="0.01" class="form-control" id="renewalValue" required>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="renewalNotes" class="form-label">Notes</label>
+                            <textarea class="form-control" id="renewalNotes" rows="3"></textarea>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" form="renewalForm" class="btn btn-primary">Save</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Receivable (INR) Modal -->
+    <div class="modal fade" id="addReceivableModal" tabindex="-1" aria-labelledby="addReceivableModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="addReceivableModalLabel">Add Invoice (INR)</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="receivableForm">
+                        <input type="hidden" id="receivableId">
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label for="receivableCompany" class="form-label">Company</label>
+                                <input type="text" class="form-control" id="receivableCompany" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="receivableProduct" class="form-label">Product</label>
+                                <select class="form-select" id="receivableProduct" required onchange="toggleOtherProduct(this, 'receivableOtherProductContainer')">
+                                    <option value="">Select Product</option>
+                                    <option value="N-Able N-Sight">N-Able N-Sight</option>
+                                    <option value="N-Able Ncentral">N-Able Ncentral</option>
+                                    <option value="Titania">Titania</option>
+                                    <option value="Nessus">Nessus</option>
+                                    <option value="Burpsuite">Burpsuite</option>
+                                    <option value="Nipper">Nipper</option>
+                                    <option value="Halo PSA">Halo PSA</option>
+                                    <option value="Sonarqube">Sonarqube</option>
+                                    <option value="other">Other (Specify)</option>
+                                </select>
+                                <div id="receivableOtherProductContainer" class="other-product-container">
+                                    <label for="receivableOtherProduct" class="form-label">Other Product</label>
+                                    <input type="text" class="form-control" id="receivableOtherProduct">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label for="receivablePONumber" class="form-label">PO Number</label>
+                                <input type="text" class="form-control" id="receivablePONumber">
+                            </div>
+                            <div class="col-md-6">
+                                <label for="receivablePODate" class="form-label">PO Date</label>
+                                <input type="date" class="form-control datepicker" id="receivablePODate">
+                            </div>
+                        </div>
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label for="receivableInvoiceNumber" class="form-label">Invoice #</label>
+                                <input type="text" class="form-control" id="receivableInvoiceNumber" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="receivableInvoiceDate" class="form-label">Invoice Date</label>
+                                <input type="date" class="form-control datepicker" id="receivableInvoiceDate" required>
+                            </div>
+                        </div>
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label for="receivableValue" class="form-label">Value (INR)</label>
+                                <input type="number" step="0.01" class="form-control" id="receivableValue" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="receivablePaymentTerm" class="form-label">Payment Term</label>
+                                <select class="form-select" id="receivablePaymentTerm" required>
+                                    <option value="0">Due on Receipt</option>
+                                    <option value="7">7 Days</option>
+                                    <option value="15">15 Days</option>
+                                    <option value="30">30 Days</option>
+                                    <option value="45">45 Days</option>
+                                    <option value="60">60 Days</option>
+                                    <option value="custom">Custom</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="row mb-3" id="customDaysContainer" style="display: none;">
+                            <div class="col-md-6">
+                                <label for="receivableCustomDays" class="form-label">Custom Days</label>
+                                <input type="number" class="form-control" id="receivableCustomDays">
+                            </div>
+                        </div>
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label for="receivableDueDate" class="form-label">Due Date</label>
+                                <input type="date" class="form-control datepicker" id="receivableDueDate" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="receivableStatus" class="form-label">Status</label>
+                                <select class="form-select" id="receivableStatus" required>
+                                    <option value="Pending">Pending</option>
+                                    <option value="Overdue">Overdue</option>
+                                    <option value="Partially Paid">Partially Paid</option>
+                                    <option value="Paid">Paid</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="receivableNotes" class="form-label">Notes</label>
+                            <textarea class="form-control" id="receivableNotes" rows="3"></textarea>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" form="receivableForm" class="btn btn-primary">Save</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Receivable (USD) Modal -->
+    <div class="modal fade" id="addReceivableUsdModal" tabindex="-1" aria-labelledby="addReceivableUsdModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="addReceivableUsdModalLabel">Add Invoice (USD)</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="receivableUsdForm">
+                        <input type="hidden" id="receivableUsdId">
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label for="receivableUsdCompany" class="form-label">Company</label>
+                                <input type="text" class="form-control" id="receivableUsdCompany" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="receivableUsdProduct" class="form-label">Product</label>
+                                <select class="form-select" id="receivableUsdProduct" required onchange="toggleOtherProduct(this, 'receivableUsdOtherProductContainer')">
+                                    <option value="">Select Product</option>
+                                    <option value="N-Able N-Sight">N-Able N-Sight</option>
+                                    <option value="N-Able Ncentral">N-Able Ncentral</option>
+                                    <option value="Titania">Titania</option>
+                                    <option value="Nessus">Nessus</option>
+                                    <option value="Burpsuite">Burpsuite</option>
+                                    <option value="Nipper">Nipper</option>
+                                    <option value="Halo PSA">Halo PSA</option>
+                                    <option value="Sonarqube">Sonarqube</option>
+                                    <option value="other">Other (Specify)</option>
+                                </select>
+                                <div id="receivableUsdOtherProductContainer" class="other-product-container">
+                                    <label for="receivableUsdOtherProduct" class="form-label">Other Product</label>
+                                    <input type="text" class="form-control" id="receivableUsdOtherProduct">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label for="receivableUsdPONumber" class="form-label">PO Number</label>
+                                <input type="text" class="form-control" id="receivableUsdPONumber">
+                            </div>
+                            <div class="col-md-6">
+                                <label for="receivableUsdPODate" class="form-label">PO Date</label>
+                                <input type="date" class="form-control datepicker" id="receivableUsdPODate">
+                            </div>
+                        </div>
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label for="receivableUsdInvoiceNumber" class="form-label">Invoice #</label>
+                                <input type="text" class="form-control" id="receivableUsdInvoiceNumber" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="receivableUsdInvoiceDate" class="form-label">Invoice Date</label>
+                                <input type="date" class="form-control datepicker" id="receivableUsdInvoiceDate" required>
+                            </div>
+                        </div>
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label for="receivableUsdValue" class="form-label">Value (USD)</label>
+                                <input type="number" step="0.01" class="form-control" id="receivableUsdValue" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="receivableUsdPaymentTerm" class="form-label">Payment Term</label>
+                                <select class="form-select" id="receivableUsdPaymentTerm" required>
+                                    <option value="0">Due on Receipt</option>
+                                    <option value="7">7 Days</option>
+                                    <option value="15">15 Days</option>
+                                    <option value="30">30 Days</option>
+                                    <option value="45">45 Days</option>
+                                    <option value="60">60 Days</option>
+                                    <option value="custom">Custom</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="row mb-3" id="customDaysUsdContainer" style="display: none;">
+                            <div class="col-md-6">
+                                <label for="receivableUsdCustomDays" class="form-label">Custom Days</label>
+                                <input type="number" class="form-control" id="receivableUsdCustomDays">
+                            </div>
+                        </div>
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label for="receivableUsdDueDate" class="form-label">Due Date</label>
+                                <input type="date" class="form-control datepicker" id="receivableUsdDueDate" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="receivableUsdStatus" class="form-label">Status</label>
+                                <select class="form-select" id="receivableUsdStatus" required>
+                                    <option value="Pending">Pending</option>
+                                    <option value="Overdue">Overdue</option>
+                                    <option value="Partially Paid">Partially Paid</option>
+                                    <option value="Paid">Paid</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="receivableUsdNotes" class="form-label">Notes</label>
+                            <textarea class="form-control" id="receivableUsdNotes" rows="3"></textarea>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" form="receivableUsdForm" class="btn btn-primary">Save</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Supplier Payment Modal -->
+    <div class="modal fade" id="addSupplierPaymentModal" tabindex="-1" aria-labelledby="addSupplierPaymentModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="addSupplierPaymentModalLabel">Add Supplier Payment</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="supplierForm">
+                        <input type="hidden" id="supplierId">
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label for="supplierVendor" class="form-label">Vendor</label>
+                                <select class="form-select" id="supplierVendor" required>
+                                    <option value="portswigger">Portswigger</option>
+                                    <option value="nable">N-Able</option>
+                                    <option value="titania">Titania</option>
+                                    <option value="sonar">Sonar</option>
+                                    <option value="tenable">Tenable</option>
+                                    <option value="halopsa">HaloPSA</option>
+                                    <option value="others">Others</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="supplierProduct" class="form-label">Product</label>
+                                <input type="text" class="form-control" id="supplierProduct" required>
+                            </div>
+                        </div>
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label for="supplierInvoiceDate" class="form-label">Invoice Date</label>
+                                <input type="date" class="form-control datepicker" id="supplierInvoiceDate" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="supplierInvoiceNumber" class="form-label">Invoice #</label>
+                                <input type="text" class="form-control" id="supplierInvoiceNumber" required>
+                            </div>
+                        </div>
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label for="supplierValue" class="form-label">Value (USD)</label>
+                                <input type="number" step="0.01" class="form-control" id="supplierValue" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="supplierDueDate" class="form-label">Due Date</label>
+                                <input type="date" class="form-control datepicker" id="supplierDueDate" required>
+                            </div>
+                        </div>
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label for="supplierStatus" class="form-label">Status</label>
+                                <select class="form-select" id="supplierStatus" required>
+                                    <option value="Pending">Pending</option>
+                                    <option value="Overdue">Overdue</option>
+                                    <option value="Partially Paid">Partially Paid</option>
+                                    <option value="Paid">Paid</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="supplierNotes" class="form-label">Notes</label>
+                            <textarea class="form-control" id="supplierNotes" rows="3"></textarea>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" form="supplierForm" class="btn btn-primary">Save</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Firebase and other scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+    
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
+        import { getDatabase, ref, set, onValue } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyCA3E7nF8Z3fGBsKznNWL9l9JZ14nRb7Ng",
+            authDomain: "intouchworld-dashboard.firebaseapp.com",
+            databaseURL: "https://intouchworld-dashboard-default-rtdb.firebaseio.com",
+            projectId: "intouchworld-dashboard",
+            storageBucket: "intouchworld-dashboard.firebasestorage.app",
+            messagingSenderId: "331515403591",
+            appId: "1:331515403591:web:8785ba9a9caf20a66a4062"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const database = getDatabase(app);
+
+        // Make Firebase functions available globally
+        window.firebaseDB = {
+            saveData: (data) => {
+                try {
+                    document.querySelector('.loading-overlay').style.display = 'flex';
+                    return set(ref(database, 'intouchData'), data)
+                        .then(() => {
+                            console.log('Data saved successfully');
+                            showAlert('success', 'Data saved successfully');
+                        })
+                        .catch(error => {
+                            console.error('Error saving data:', error);
+                            showAlert('danger', 'Error saving data: ' + error.message);
+                        })
+                        .finally(() => {
+                            document.querySelector('.loading-overlay').style.display = 'none';
+                        });
+                } catch (error) {
+                    console.error('Error in saveData:', error);
+                    showAlert('danger', 'Error saving data: ' + error.message);
+                    document.querySelector('.loading-overlay').style.display = 'none';
+                    return Promise.reject(error);
+                }
+            },
+            loadData: (callback) => {
+                try {
+                    document.querySelector('.loading-overlay').style.display = 'flex';
+                    onValue(ref(database, 'intouchData'), (snapshot) => {
+                        const data = snapshot.val() || {
+                            sales: [], renewals: [], receivables: [], receivablesUsd: [],
+                            suppliers: { portswigger: [], nable: [], titania: [], sonar: [], tenable: [], halopsa: [], others: [] }
+                        };
+                        callback(data);
+                        document.querySelector('.loading-overlay').style.display = 'none';
+                    }, (error) => {
+                        console.error('Error loading data:', error);
+                        showAlert('danger', 'Error loading data: ' + error.message);
+                        callback({
+                            sales: [], renewals: [], receivables: [], receivablesUsd: [],
+                            suppliers: { portswigger: [], nable: [], titania: [], sonar: [], tenable: [], halopsa: [], others: [] }
+                        });
+                        document.querySelector('.loading-overlay').style.display = 'none';
+                    });
+                } catch (error) {
+                    console.error('Error in loadData:', error);
+                    showAlert('danger', 'Error loading data: ' + error.message);
+                    callback({
+                        sales: [], renewals: [], receivables: [], receivablesUsd: [],
+                        suppliers: { portswigger: [], nable: [], titania: [], sonar: [], tenable: [], halopsa: [], others: [] }
+                    });
+                    document.querySelector('.loading-overlay').style.display = 'none';
+                }
+            }
+        };
+    </script>
+
+    <script>
+        // Global variables
+        let salesChart, receivablesChart;
+        let currentEditingId = null;
+        
+        // Initialize the application
+        document.addEventListener('DOMContentLoaded', function() {
+            initDatePickers();
+            initCharts();
+            setupEventListeners();
+            loadData();
+            
+            // Set today's date as default in date pickers
+            const today = new Date().toISOString().split('T')[0];
+            document.querySelectorAll('.datepicker').forEach(picker => {
+                picker.value = today;
+            });
+        });
+
+        function showAlert(type, message) {
+            const alertDiv = document.createElement('div');
+            alertDiv.className = `alert alert-${type} alert-dismissible fade show position-fixed top-0 end-0 m-3`;
+            alertDiv.style.zIndex = '9999';
+            alertDiv.innerHTML = `
+                ${message}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            `;
+            document.body.appendChild(alertDiv);
+            
+            // Auto-dismiss after 5 seconds
+            setTimeout(() => {
+                alertDiv.classList.remove('show');
+                setTimeout(() => alertDiv.remove(), 150);
+            }, 5000);
+        }
+
+        function initDatePickers() {
+            flatpickr(".datepicker", {
+                dateFormat: "Y-m-d",
+                allowInput: true
+            });
+        }
+        
+        function initCharts() {
+            const salesCtx = document.getElementById('salesChart').getContext('2d');
+            salesChart = new Chart(salesCtx, {
+                type: 'pie',
+                data: { labels: [], datasets: [{ data: [], backgroundColor: [] }] },
+                options: {
+                    plugins: {
+                        legend: { position: 'right' },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return `${context.label}: ₹${context.raw.toLocaleString('en-IN')}`;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+            
+            const receivablesCtx = document.getElementById('receivablesChart').getContext('2d');
+            receivablesChart = new Chart(receivablesCtx, {
+                type: 'bar',
+                data: { labels: [], datasets: [{ label: 'Outstanding Amount (INR)', data: [], backgroundColor: [] }] },
+                options: {
+                    scales: { y: { beginAtZero: true } },
+                    plugins: {
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return `${context.dataset.label}: ₹${context.raw.toLocaleString('en-IN')}`;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+        
+        function setupEventListeners() {
+            // Form submissions
+            document.getElementById('salesForm')?.addEventListener('submit', saveSalesRecord);
+            document.getElementById('renewalForm')?.addEventListener('submit', saveRenewalRecord);
+            document.getElementById('receivableForm')?.addEventListener('submit', saveReceivableRecord);
+            document.getElementById('receivableUsdForm')?.addEventListener('submit', saveReceivableUsdRecord);
+            document.getElementById('supplierForm')?.addEventListener('submit', saveSupplierRecord);
+            
+            // Tab changes
+            document.querySelectorAll('.nav-tabs button').forEach(tab => {
+                tab.addEventListener('shown.bs.tab', refreshCurrentTab);
+            });
+
+            // Payment term change handlers
+            document.getElementById('receivablePaymentTerm')?.addEventListener('change', function() {
+                updateDueDate('receivable');
+            });
+
+            document.getElementById('receivableInvoiceDate')?.addEventListener('change', function() {
+                updateDueDate('receivable');
+            });
+
+            document.getElementById('receivableUsdPaymentTerm')?.addEventListener('change', function() {
+                updateDueDate('receivableUsd');
+            });
+
+            document.getElementById('receivableUsdInvoiceDate')?.addEventListener('change', function() {
+                updateDueDate('receivableUsd');
+            });
+        }
+
+        function toggleOtherProduct(selectElement, containerId) {
+            const container = document.getElementById(containerId);
+            if (selectElement.value === 'other') {
+                container.style.display = 'block';
+            } else {
+                container.style.display = 'none';
+            }
+        }
+
+        function updateDueDate(prefix) {
+            const paymentTerm = document.getElementById(`${prefix}PaymentTerm`).value;
+            const customDaysContainer = document.getElementById(`${prefix === 'receivable' ? 'customDaysContainer' : 'customDaysUsdContainer'}`);
+            const dueDateField = document.getElementById(`${prefix}DueDate`);
+            const invoiceDateField = document.getElementById(`${prefix}InvoiceDate`);
+            
+            if (paymentTerm === 'custom') {
+                customDaysContainer.style.display = 'block';
+            } else {
+                customDaysContainer.style.display = 'none';
+                
+                if (invoiceDateField.value && paymentTerm) {
+                    const invoiceDate = new Date(invoiceDateField.value);
+                    const days = parseInt(paymentTerm);
+                    invoiceDate.setDate(invoiceDate.getDate() + days);
+                    dueDateField.value = invoiceDate.toISOString().split('T')[0];
+                }
+            }
+        }
+
+        function loadData() {
+            window.firebaseDB.loadData((data) => {
+                updateDashboard(data.sales, data.renewals, data.receivables, data.receivablesUsd, data.suppliers);
+            });
+        }
+
+        function saveData(data) {
+            return window.firebaseDB.saveData(data);
+        }
+
+        function updateDashboard(sales, renewals, receivables, receivablesUsd, suppliers) {
+            updateSummaryMetrics(sales, renewals, receivables, receivablesUsd, suppliers);
+            loadSalesData(sales);
+            loadRenewalsData(renewals);
+            loadReceivablesData(receivables);
+            loadReceivablesUsdData(receivablesUsd);
+            loadSupplierData(suppliers);
+            updateSalesChart(sales);
+            updateReceivablesChart(receivables);
+        }
+
+        function updateSummaryMetrics(sales, renewals, receivables, receivablesUsd, suppliers) {
+            const totalPipeline = sales.reduce((sum, item) => sum + (item.value || 0), 0);
+            const upcomingRenewals = renewals
+                .filter(r => r.status === 'Pending' || r.status === 'In Process' || r.status === 'Quote Sent')
+                .reduce((sum, item) => sum + (item.value || 0), 0);
+            const outstandingReceivables = receivables
+                .filter(r => r.status !== 'Paid')
+                .reduce((sum, item) => sum + (item.value || 0), 0);
+            
+            const outstandingReceivablesUsd = receivablesUsd
+                .filter(r => r.status !== 'Paid')
+                .reduce((sum, item) => sum + (item.value || 0), 0);
+            
+            let supplierPayments = 0;
+            Object.values(suppliers).flat()
+                .filter(s => s.status !== 'Paid')
+                .forEach(item => {
+                    supplierPayments += item.value || 0;
+                });
+            
+            document.getElementById('totalPipeline').textContent = formatCurrency(totalPipeline, 'INR');
+            document.getElementById('upcomingRenewals').textContent = formatCurrency(upcomingRenewals, 'INR');
+            document.getElementById('outstandingReceivables').textContent = formatCurrency(outstandingReceivables, 'INR');
+            document.getElementById('supplierPayments').textContent = formatCurrency(supplierPayments, 'USD');
+        }
+
+        function loadSalesData(sales) {
+            const tbody = document.querySelector('#salesTable tbody');
+            tbody.innerHTML = '';
+            
+            let total = 0;
+            sales.forEach((item, index) => {
+                total += item.value || 0;
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${item.company || ''}</td>
+                    <td>${item.product || ''}</td>
+                    <td>${item.licenseType || ''}</td>
+                    <td><span class="status-badge ${item.status.toLowerCase().replace(' ', '-')}">${item.status || ''}</span></td>
+                    <td>${formatCurrency(item.value || 0, 'INR')}</td>
+                    <td class="notes-cell" title="${item.notes || ''}">${item.notes || ''}</td>
+                    <td>
+                        <button class="btn btn-sm btn-outline-primary" onclick="editSalesRecord(${index})">Edit</button>
+                        <button class="btn btn-sm btn-outline-danger" onclick="deleteSalesRecord(${index})">Delete</button>
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
+            
+            document.getElementById('salesTotal').textContent = formatCurrency(total, 'INR');
+        }
+
+        function loadRenewalsData(renewals) {
+            const tbody = document.querySelector('#renewalsTable tbody');
+            tbody.innerHTML = '';
+            
+            let total = 0;
+            renewals.forEach((item, index) => {
+                total += item.value || 0;
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${item.company || ''}</td>
+                    <td>${item.product || ''}</td>
+                    <td>${item.renewalDate || ''}</td>
+                    <td><span class="status-badge ${item.status.toLowerCase().replace(' ', '-')}">${item.status || ''}</span></td>
+                    <td>${formatCurrency(item.value || 0, 'INR')}</td>
+                    <td>${item.licenseType || ''}</td>
+                    <td class="notes-cell" title="${item.notes || ''}">${item.notes || ''}</td>
+                    <td>
+                        <button class="btn btn-sm btn-outline-primary" onclick="editRenewalRecord(${index})">Edit</button>
+                        <button class="btn btn-sm btn-outline-danger" onclick="deleteRenewalRecord(${index})">Delete</button>
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
+            
+            document.getElementById('renewalsTotal').textContent = formatCurrency(total, 'INR');
+        }
+
+        function loadReceivablesData(receivables) {
+            const tbody = document.querySelector('#receivablesTable tbody');
+            tbody.innerHTML = '';
+            
+            let total = 0;
+            receivables.forEach((item, index) => {
+                total += item.value || 0;
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${item.company || ''}</td>
+                    <td>${item.product || ''}</td>
+                    <td>${item.poNumber || ''}</td>
+                    <td>${item.poDate || ''}</td>
+                    <td>${item.invoiceNumber || ''}</td>
+                    <td>${item.invoiceDate || ''}</td>
+                    <td>${formatCurrency(item.value || 0, 'INR')}</td>
+                    <td>${getPaymentTermLabel(item.paymentTerm)}</td>
+                    <td>${item.dueDate || ''}</td>
+                    <td><span class="status-badge ${item.status.toLowerCase().replace(' ', '-')}">${item.status || ''}</span></td>
+                    <td class="notes-cell" title="${item.notes || ''}">${item.notes || ''}</td>
+                    <td>
+                        <button class="btn btn-sm btn-outline-primary" onclick="editReceivableRecord(${index})">Edit</button>
+                        <button class="btn btn-sm btn-outline-danger" onclick="deleteReceivableRecord(${index})">Delete</button>
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
+            
+            document.getElementById('receivablesTotal').textContent = formatCurrency(total, 'INR');
+        }
+
+        function loadReceivablesUsdData(receivablesUsd) {
+            const tbody = document.querySelector('#receivablesUsdTable tbody');
+            tbody.innerHTML = '';
+            
+            let total = 0;
+            receivablesUsd.forEach((item, index) => {
+                total += item.value || 0;
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${item.company || ''}</td>
+                    <td>${item.product || ''}</td>
+                    <td>${item.poNumber || ''}</td>
+                    <td>${item.poDate || ''}</td>
+                    <td>${item.invoiceNumber || ''}</td>
+                    <td>${item.invoiceDate || ''}</td>
+                    <td>${formatCurrency(item.value || 0, 'USD')}</td>
+                    <td>${getPaymentTermLabel(item.paymentTerm)}</td>
+                    <td>${item.dueDate || ''}</td>
+                    <td><span class="status-badge ${item.status.toLowerCase().replace(' ', '-')}">${item.status || ''}</span></td>
+                    <td class="notes-cell" title="${item.notes || ''}">${item.notes || ''}</td>
+                    <td>
+                        <button class="btn btn-sm btn-outline-primary" onclick="editReceivableUsdRecord(${index})">Edit</button>
+                        <button class="btn btn-sm btn-outline-danger" onclick="deleteReceivableUsdRecord(${index})">Delete</button>
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
+            
+            document.getElementById('receivablesUsdTotal').textContent = formatCurrency(total, 'USD');
+        }
+
+        function loadSupplierData(suppliers) {
+            // Load data for each supplier tab
+            Object.keys(suppliers).forEach(supplier => {
+                const tbody = document.querySelector(`#${supplier} tbody`);
+                if (!tbody) return;
+                
+                tbody.innerHTML = '';
+                let total = 0;
+                
+                suppliers[supplier].forEach((item, index) => {
+                    total += item.value || 0;
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td>${item.product || ''}</td>
+                        <td>${item.invoiceDate || ''}</td>
+                        <td>${item.invoiceNumber || ''}</td>
+                        <td>${formatCurrency(item.value || 0, 'USD')}</td>
+                        <td>${item.dueDate || ''}</td>
+                        <td><span class="status-badge ${item.status.toLowerCase().replace(' ', '-')}">${item.status || ''}</span></td>
+                        <td class="notes-cell" title="${item.notes || ''}">${item.notes || ''}</td>
+                        <td>
+                            <button class="btn btn-sm btn-outline-primary" onclick="editSupplierRecord('${supplier}', ${index})">Edit</button>
+                            <button class="btn btn-sm btn-outline-danger" onclick="deleteSupplierRecord('${supplier}', ${index})">Delete</button>
+                        </td>
+                    `;
+                    tbody.appendChild(row);
+                });
+                
+                document.getElementById(`${supplier}Total`).textContent = formatCurrency(total, 'USD');
+            });
+        }
+
+        function updateSalesChart(sales) {
+            const statusGroups = {};
+            sales.forEach(item => {
+                if (!statusGroups[item.status]) {
+                    statusGroups[item.status] = 0;
+                }
+                statusGroups[item.status] += item.value || 0;
+            });
+            
+            salesChart.data.labels = Object.keys(statusGroups);
+            salesChart.data.datasets[0].data = Object.values(statusGroups);
+            salesChart.data.datasets[0].backgroundColor = Object.keys(statusGroups).map(status => {
+                switch(status.toLowerCase()) {
+                    case 'prospect': return 'var(--color-prospect)';
+                    case 'quote sent': return 'var(--color-quote-sent)';
+                    case 'in process': return 'var(--color-in-process)';
+                    case 'negotiation': return 'var(--color-negotiation)';
+                    case 'closed won': return 'var(--color-closed-won)';
+                    case 'closed lost': return 'var(--color-closed-lost)';
+                    default: return '#6c757d';
+                }
+            });
+            salesChart.update();
+        }
+
+        function updateReceivablesChart(receivables) {
+            const agingGroups = {
+                'Current': 0,
+                '1-30 Days': 0,
+                '31-60 Days': 0,
+                '61-90 Days': 0,
+                '>90 Days': 0
+            };
+            
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            
+            receivables.filter(r => r.status !== 'Paid').forEach(item => {
+                if (!item.dueDate) return;
+                
+                const dueDate = new Date(item.dueDate);
+                const diffDays = Math.floor((today - dueDate) / (1000 * 60 * 60 * 24));
+                
+                if (diffDays <= 0) {
+                    agingGroups['Current'] += item.value || 0;
+                } else if (diffDays <= 30) {
+                    agingGroups['1-30 Days'] += item.value || 0;
+                } else if (diffDays <= 60) {
+                    agingGroups['31-60 Days'] += item.value || 0;
+                } else if (diffDays <= 90) {
+                    agingGroups['61-90 Days'] += item.value || 0;
+                } else {
+                    agingGroups['>90 Days'] += item.value || 0;
+                }
+            });
+            
+            receivablesChart.data.labels = Object.keys(agingGroups);
+            receivablesChart.data.datasets[0].data = Object.values(agingGroups);
+            receivablesChart.data.datasets[0].backgroundColor = [
+                'var(--color-closed-won)',
+                'var(--color-pending)',
+                'var(--color-partially-paid)',
+                'var(--color-overdue)',
+                'var(--color-closed-lost)'
+            ];
+            receivablesChart.update();
+        }
+
+        function saveSalesRecord(e) {
+            e.preventDefault();
+            window.firebaseDB.loadData(data => {
+                const sales = data.sales || [];
+                
+                const productSelect = document.getElementById('salesProduct');
+                const product = productSelect.value === 'other' 
+                    ? document.getElementById('salesOtherProduct').value 
+                    : productSelect.value;
+                
+                const record = {
+                    company: document.getElementById('salesCompany').value,
+                    product: product,
+                    licenseType: document.getElementById('salesLicenseType').value,
+                    status: document.getElementById('salesStatus').value,
+                    value: parseFloat(document.getElementById('salesValue').value) || 0,
+                    notes: document.getElementById('salesNotes').value
+                };
+                
+                if (currentEditingId !== null) {
+                    sales[currentEditingId] = record;
+                } else {
+                    sales.push(record);
+                }
+                
+                saveData({ ...data, sales })
+                    .then(() => {
+                        document.getElementById('salesForm').reset();
+                        $('#addSalesModal').modal('hide');
+                        currentEditingId = null;
+                    });
+            });
+        }
+
+        function saveRenewalRecord(e) {
+            e.preventDefault();
+            window.firebaseDB.loadData(data => {
+                const renewals = data.renewals || [];
+                
+                const productSelect = document.getElementById('renewalProduct');
+                const product = productSelect.value === 'other' 
+                    ? document.getElementById('renewalOtherProduct').value 
+                    : productSelect.value;
+                
+                const record = {
+                    company: document.getElementById('renewalCompany').value,
+                    product: product,
+                    renewalDate: document.getElementById('renewalDate').value,
+                    licenseType: document.getElementById('renewalLicenseType').value,
+                    status: document.getElementById('renewalStatus').value,
+                    value: parseFloat(document.getElementById('renewalValue').value) || 0,
+                    notes: document.getElementById('renewalNotes').value
+                };
+                
+                if (currentEditingId !== null) {
+                    renewals[currentEditingId] = record;
+                } else {
+                    renewals.push(record);
+                }
+                
+                saveData({ ...data, renewals })
+                    .then(() => {
+                        document.getElementById('renewalForm').reset();
+                        $('#addRenewalModal').modal('hide');
+                        currentEditingId = null;
+                    });
+            });
+        }
+
+        function saveReceivableRecord(e) {
+            e.preventDefault();
+            window.firebaseDB.loadData(data => {
+                const receivables = data.receivables || [];
+                
+                const productSelect = document.getElementById('receivableProduct');
+                const product = productSelect.value === 'other' 
+                    ? document.getElementById('receivableOtherProduct').value 
+                    : productSelect.value;
+                
+                const record = {
+                    company: document.getElementById('receivableCompany').value,
+                    product: product,
+                    poNumber: document.getElementById('receivablePONumber').value,
+                    poDate: document.getElementById('receivablePODate').value,
+                    invoiceNumber: document.getElementById('receivableInvoiceNumber').value,
+                    invoiceDate: document.getElementById('receivableInvoiceDate').value,
+                    value: parseFloat(document.getElementById('receivableValue').value) || 0,
+                    paymentTerm: document.getElementById('receivablePaymentTerm').value,
+                    dueDate: document.getElementById('receivableDueDate').value,
+                    status: document.getElementById('receivableStatus').value,
+                    notes: document.getElementById('receivableNotes').value
+                };
+                
+                if (currentEditingId !== null) {
+                    receivables[currentEditingId] = record;
+                } else {
+                    receivables.push(record);
+                }
+                
+                saveData({ ...data, receivables })
+                    .then(() => {
+                        document.getElementById('receivableForm').reset();
+                        $('#addReceivableModal').modal('hide');
+                        currentEditingId = null;
+                    });
+            });
+        }
+
+        function saveReceivableUsdRecord(e) {
+            e.preventDefault();
+            window.firebaseDB.loadData(data => {
+                const receivablesUsd = data.receivablesUsd || [];
+                
+                const productSelect = document.getElementById('receivableUsdProduct');
+                const product = productSelect.value === 'other' 
+                    ? document.getElementById('receivableUsdOtherProduct').value 
+                    : productSelect.value;
+                
+                const record = {
+                    company: document.getElementById('receivableUsdCompany').value,
+                    product: product,
+                    poNumber: document.getElementById('receivableUsdPONumber').value,
+                    poDate: document.getElementById('receivableUsdPODate').value,
+                    invoiceNumber: document.getElementById('receivableUsdInvoiceNumber').value,
+                    invoiceDate: document.getElementById('receivableUsdInvoiceDate').value,
+                    value: parseFloat(document.getElementById('receivableUsdValue').value) || 0,
+                    paymentTerm: document.getElementById('receivableUsdPaymentTerm').value,
+                    dueDate: document.getElementById('receivableUsdDueDate').value,
+                    status: document.getElementById('receivableUsdStatus').value,
+                    notes: document.getElementById('receivableUsdNotes').value
+                };
+                
+                if (currentEditingId !== null) {
+                    receivablesUsd[currentEditingId] = record;
+                } else {
+                    receivablesUsd.push(record);
+                }
+                
+                saveData({ ...data, receivablesUsd })
+                    .then(() => {
+                        document.getElementById('receivableUsdForm').reset();
+                        $('#addReceivableUsdModal').modal('hide');
+                        currentEditingId = null;
+                    });
+            });
+        }
+
+        function saveSupplierRecord(e) {
+            e.preventDefault();
+            window.firebaseDB.loadData(data => {
+                const suppliers = data.suppliers || { portswigger: [], nable: [], titania: [], sonar: [], tenable: [], halopsa: [], others: [] };
+                const vendor = document.getElementById('supplierVendor').value;
+                
+                const record = {
+                    product: document.getElementById('supplierProduct').value,
+                    invoiceDate: document.getElementById('supplierInvoiceDate').value,
+                    invoiceNumber: document.getElementById('supplierInvoiceNumber').value,
+                    value: parseFloat(document.getElementById('supplierValue').value) || 0,
+                    dueDate: document.getElementById('supplierDueDate').value,
+                    status: document.getElementById('supplierStatus').value,
+                    notes: document.getElementById('supplierNotes').value
+                };
+                
+                if (currentEditingId !== null) {
+                    suppliers[vendor][currentEditingId] = record;
+                } else {
+                    suppliers[vendor].push(record);
+                }
+                
+                saveData({ ...data, suppliers })
+                    .then(() => {
+                        document.getElementById('supplierForm').reset();
+                        $('#addSupplierPaymentModal').modal('hide');
+                        currentEditingId = null;
+                    });
+            });
+        }
+
+        function editSalesRecord(index) {
+            window.firebaseDB.loadData(data => {
+                const record = data.sales[index];
+                if (!record) return;
+                
+                document.getElementById('salesCompany').value = record.company || '';
+                
+                // Set product value
+                const productSelect = document.getElementById('salesProduct');
+                const isOtherProduct = ![
+                    'N-Able N-Sight', 'N-Able Ncentral', 'Titania', 'Nessus', 
+                    'Burpsuite', 'Nipper', 'Halo PSA', 'Sonarqube'
+                ].includes(record.product);
+                
+                if (isOtherProduct) {
+                    productSelect.value = 'other';
+                    document.getElementById('salesOtherProduct').value = record.product || '';
+                    document.getElementById('salesOtherProductContainer').style.display = 'block';
+                } else {
+                    productSelect.value = record.product || '';
+                    document.getElementById('salesOtherProductContainer').style.display = 'none';
+                }
+                
+                document.getElementById('salesLicenseType').value = record.licenseType || '';
+                document.getElementById('salesStatus').value = record.status || '';
+                document.getElementById('salesValue').value = record.value || '';
+                document.getElementById('salesNotes').value = record.notes || '';
+                document.getElementById('salesId').value = index;
+                
+                currentEditingId = index;
+                $('#addSalesModal').modal('show');
+            });
+        }
+
+        function editRenewalRecord(index) {
+            window.firebaseDB.loadData(data => {
+                const record = data.renewals[index];
+                if (!record) return;
+                
+                document.getElementById('renewalCompany').value = record.company || '';
+                
+                // Set product value
+                const productSelect = document.getElementById('renewalProduct');
+                const isOtherProduct = ![
+                    'N-Able N-Sight', 'N-Able Ncentral', 'Titania', 'Nessus', 
+                    'Burpsuite', 'Nipper', 'Halo PSA', 'Sonarqube'
+                ].includes(record.product);
+                
+                if (isOtherProduct) {
+                    productSelect.value = 'other';
+                    document.getElementById('renewalOtherProduct').value = record.product || '';
+                    document.getElementById('renewalOtherProductContainer').style.display = 'block';
+                } else {
+                    productSelect.value = record.product || '';
+                    document.getElementById('renewalOtherProductContainer').style.display = 'none';
+                }
+                
+                document.getElementById('renewalDate').value = record.renewalDate || '';
+                document.getElementById('renewalLicenseType').value = record.licenseType || '';
+                document.getElementById('renewalStatus').value = record.status || '';
+                document.getElementById('renewalValue').value = record.value || '';
+                document.getElementById('renewalNotes').value = record.notes || '';
+                document.getElementById('renewalId').value = index;
+                
+                currentEditingId = index;
+                $('#addRenewalModal').modal('show');
+            });
+        }
+
+        function editReceivableRecord(index) {
+            window.firebaseDB.loadData(data => {
+                const record = data.receivables[index];
+                if (!record) return;
+                
+                document.getElementById('receivableCompany').value = record.company || '';
+                
+                // Set product value
+                const productSelect = document.getElementById('receivableProduct');
+                const isOtherProduct = ![
+                    'N-Able N-Sight', 'N-Able Ncentral', 'Titania', 'Nessus', 
+                    'Burpsuite', 'Nipper', 'Halo PSA', 'Sonarqube'
+                ].includes(record.product);
+                
+                if (isOtherProduct) {
+                    productSelect.value = 'other';
+                    document.getElementById('receivableOtherProduct').value = record.product || '';
+                    document.getElementById('receivableOtherProductContainer').style.display = 'block';
+                } else {
+                    productSelect.value = record.product || '';
+                    document.getElementById('receivableOtherProductContainer').style.display = 'none';
+                }
+                
+                document.getElementById('receivablePONumber').value = record.poNumber || '';
+                document.getElementById('receivablePODate').value = record.poDate || '';
+                document.getElementById('receivableInvoiceNumber').value = record.invoiceNumber || '';
+                document.getElementById('receivableInvoiceDate').value = record.invoiceDate || '';
+                document.getElementById('receivableValue').value = record.value || '';
+                document.getElementById('receivablePaymentTerm').value = record.paymentTerm || '';
+                document.getElementById('receivableDueDate').value = record.dueDate || '';
+                document.getElementById('receivableStatus').value = record.status || '';
+                document.getElementById('receivableNotes').value = record.notes || '';
+                document.getElementById('receivableId').value = index;
+                
+                if (record.paymentTerm === 'custom') {
+                    document.getElementById('customDaysContainer').style.display = 'block';
+                    document.getElementById('receivableCustomDays').value = record.customDays || '';
+                } else {
+                    document.getElementById('customDaysContainer').style.display = 'none';
+                }
+                
+                currentEditingId = index;
+                $('#addReceivableModal').modal('show');
+            });
+        }
+
+        function editReceivableUsdRecord(index) {
+            window.firebaseDB.loadData(data => {
+                const record = data.receivablesUsd[index];
+                if (!record) return;
+                
+                document.getElementById('receivableUsdCompany').value = record.company || '';
+                
+                // Set product value
+                const productSelect = document.getElementById('receivableUsdProduct');
+                const isOtherProduct = ![
+                    'N-Able N-Sight', 'N-Able Ncentral', 'Titania', 'Nessus', 
+                    'Burpsuite', 'Nipper', 'Halo PSA', 'Sonarqube'
+                ].includes(record.product);
+                
+                if (isOtherProduct) {
+                    productSelect.value = 'other';
+                    document.getElementById('receivableUsdOtherProduct').value = record.product || '';
+                    document.getElementById('receivableUsdOtherProductContainer').style.display = 'block';
+                } else {
+                    productSelect.value = record.product || '';
+                    document.getElementById('receivableUsdOtherProductContainer').style.display = 'none';
+                }
+                
+                document.getElementById('receivableUsdPONumber').value = record.poNumber || '';
+                document.getElementById('receivableUsdPODate').value = record.poDate || '';
+                document.getElementById('receivableUsdInvoiceNumber').value = record.invoiceNumber || '';
+                document.getElementById('receivableUsdInvoiceDate').value = record.invoiceDate || '';
+                document.getElementById('receivableUsdValue').value = record.value || '';
+                document.getElementById('receivableUsdPaymentTerm').value = record.paymentTerm || '';
+                document.getElementById('receivableUsdDueDate').value = record.dueDate || '';
+                document.getElementById('receivableUsdStatus').value = record.status || '';
+                document.getElementById('receivableUsdNotes').value = record.notes || '';
+                document.getElementById('receivableUsdId').value = index;
+                
+                if (record.paymentTerm === 'custom') {
+                    document.getElementById('customDaysUsdContainer').style.display = 'block';
+                    document.getElementById('receivableUsdCustomDays').value = record.customDays || '';
+                } else {
+                    document.getElementById('customDaysUsdContainer').style.display = 'none';
+                }
+                
+                currentEditingId = index;
+                $('#addReceivableUsdModal').modal('show');
+            });
+        }
+
+        function editSupplierRecord(vendor, index) {
+            window.firebaseDB.loadData(data => {
+                const record = data.suppliers[vendor][index];
+                if (!record) return;
+                
+                document.getElementById('supplierVendor').value = vendor;
+                document.getElementById('supplierProduct').value = record.product || '';
+                document.getElementById('supplierInvoiceDate').value = record.invoiceDate || '';
+                document.getElementById('supplierInvoiceNumber').value = record.invoiceNumber || '';
+                document.getElementById('supplierValue').value = record.value || '';
+                document.getElementById('supplierDueDate').value = record.dueDate || '';
+                document.getElementById('supplierStatus').value = record.status || '';
+                document.getElementById('supplierNotes').value = record.notes || '';
+                document.getElementById('supplierId').value = `${vendor}-${index}`;
+                
+                currentEditingId = index;
+                $('#addSupplierPaymentModal').modal('show');
+            });
+        }
+
+        function deleteSalesRecord(index) {
+            if (confirm('Are you sure you want to delete this sales record?')) {
+                window.firebaseDB.loadData(data => {
+                    data.sales.splice(index, 1);
+                    saveData(data);
+                });
+            }
+        }
+
+        function deleteRenewalRecord(index) {
+            if (confirm('Are you sure you want to delete this renewal record?')) {
+                window.firebaseDB.loadData(data => {
+                    data.renewals.splice(index, 1);
+                    saveData(data);
+                });
+            }
+        }
+
+        function deleteReceivableRecord(index) {
+            if (confirm('Are you sure you want to delete this receivable record?')) {
+                window.firebaseDB.loadData(data => {
+                    data.receivables.splice(index, 1);
+                    saveData(data);
+                });
+            }
+        }
+
+        function deleteReceivableUsdRecord(index) {
+            if (confirm('Are you sure you want to delete this USD receivable record?')) {
+                window.firebaseDB.loadData(data => {
+                    data.receivablesUsd.splice(index, 1);
+                    saveData(data);
+                });
+            }
+        }
+
+        function deleteSupplierRecord(vendor, index) {
+            if (confirm('Are you sure you want to delete this supplier payment record?')) {
+                window.firebaseDB.loadData(data => {
+                    data.suppliers[vendor].splice(index, 1);
+                    saveData(data);
+                });
+            }
+        }
+
+        function refreshCurrentTab() {
+            window.firebaseDB.loadData(data => {
+                updateDashboard(data.sales, data.renewals, data.receivables, data.receivablesUsd, data.suppliers);
+            });
+        }
+
+        function exportToCSV(type) {
+            window.firebaseDB.loadData(data => {
+                let csvContent = "data:text/csv;charset=utf-8,";
+                let headers = [];
+                let rows = [];
+                
+                switch(type) {
+                    case 'sales':
+                        headers = ['Company', 'Product', 'License Type', 'Status', 'Value (INR)', 'Notes'];
+                        rows = data.sales.map(item => [
+                            `"${item.company || ''}"`,
+                            `"${item.product || ''}"`,
+                            `"${item.licenseType || ''}"`,
+                            `"${item.status || ''}"`,
+                            item.value || 0,
+                            `"${item.notes || ''}"`
+                        ]);
+                        break;
+                    case 'renewals':
+                        headers = ['Company', 'Product', 'Renewal Date', 'License Type', 'Status', 'Value (INR)', 'Notes'];
+                        rows = data.renewals.map(item => [
+                            `"${item.company || ''}"`,
+                            `"${item.product || ''}"`,
+                            item.renewalDate || '',
+                            `"${item.licenseType || ''}"`,
+                            `"${item.status || ''}"`,
+                            item.value || 0,
+                            `"${item.notes || ''}"`
+                        ]);
+                        break;
+                    case 'receivables':
+                        headers = ['Company', 'Product', 'PO Number', 'PO Date', 'Invoice #', 'Invoice Date', 'Value (INR)', 'Payment Term', 'Due Date', 'Status', 'Notes'];
+                        rows = data.receivables.map(item => [
+                            `"${item.company || ''}"`,
+                            `"${item.product || ''}"`,
+                            `"${item.poNumber || ''}"`,
+                            item.poDate || '',
+                            `"${item.invoiceNumber || ''}"`,
+                            item.invoiceDate || '',
+                            item.value || 0,
+                            `"${getPaymentTermLabel(item.paymentTerm)}"`,
+                            item.dueDate || '',
+                            `"${item.status || ''}"`,
+                            `"${item.notes || ''}"`
+                        ]);
+                        break;
+                    case 'receivablesUsd':
+                        headers = ['Company', 'Product', 'PO Number', 'PO Date', 'Invoice #', 'Invoice Date', 'Value (USD)', 'Payment Term', 'Due Date', 'Status', 'Notes'];
+                        rows = data.receivablesUsd.map(item => [
+                            `"${item.company || ''}"`,
+                            `"${item.product || ''}"`,
+                            `"${item.poNumber || ''}"`,
+                            item.poDate || '',
+                            `"${item.invoiceNumber || ''}"`,
+                            item.invoiceDate || '',
+                            item.value || 0,
+                            `"${getPaymentTermLabel(item.paymentTerm)}"`,
+                            item.dueDate || '',
+                            `"${item.status || ''}"`,
+                            `"${item.notes || ''}"`
+                        ]);
+                        break;
+                    case 'suppliers':
+                        headers = ['Vendor', 'Product', 'Invoice Date', 'Invoice #', 'Value (USD)', 'Due Date', 'Status', 'Notes'];
+                        rows = [];
+                        Object.entries(data.suppliers).forEach(([vendor, items]) => {
+                            items.forEach(item => {
+                                rows.push([
+                                    `"${vendor}"`,
+                                    `"${item.product || ''}"`,
+                                    item.invoiceDate || '',
+                                    `"${item.invoiceNumber || ''}"`,
+                                    item.value || 0,
+                                    item.dueDate || '',
+                                    `"${item.status || ''}"`,
+                                    `"${item.notes || ''}"`
+                                ]);
+                            });
+                        });
+                        break;
+                }
+                
+                csvContent += headers.join(',') + "\n";
+                rows.forEach(row => {
+                    csvContent += row.join(',') + "\n";
+                });
+                
+                const encodedUri = encodeURI(csvContent);
+                const link = document.createElement("a");
+                link.setAttribute("href", encodedUri);
+                link.setAttribute("download", `${type}_export_${new Date().toISOString().slice(0,10)}.csv`);
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            });
+        }
+
+        function getPaymentTermLabel(term) {
+            if (term === '0') return 'Due on Receipt';
+            if (term === '7') return '7 Days';
+            if (term === '15') return '15 Days';
+            if (term === '30') return '30 Days';
+            if (term === '45') return '45 Days';
+            if (term === '60') return '60 Days';
+            if (term === 'custom') return 'Custom';
+            return term;
+        }
+
+        function formatCurrency(amount, currency = 'INR') {
+            if (!amount) amount = 0;
+            if (currency === 'INR') {
+                return '₹' + amount.toLocaleString('en-IN', { maximumFractionDigits: 2, minimumFractionDigits: 2 });
+            } else if (currency === 'USD') {
+                return '$' + amount.toLocaleString('en-US', { maximumFractionDigits: 2, minimumFractionDigits: 2 });
+            }
+            return amount.toLocaleString('en-US', { maximumFractionDigits: 2, minimumFractionDigits: 2 });
+        }
+    </script>
+</body>
+</html>
